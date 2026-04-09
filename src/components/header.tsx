@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Sidebar } from '@/components/sidebar';
+import { NotificationBell } from '@/components/notification-bell';
 
 export function Header() {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -40,6 +41,8 @@ export function Header() {
       </NavLink>
 
       <div className="flex-1" />
+
+      <NotificationBell />
 
       <ThemeToggle />
 

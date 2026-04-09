@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "server": "tsx watch src/server/index.ts",
     "db:migrate": "tsx src/server/db/migrate.ts",
-    "db:seed": "tsx src/server/db/seed.ts"
+    "db:seed": "tsx src/server/db/seed.ts",
+    "worker": "tsx src/server/worker.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,6 +37,7 @@
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
+    "stripe": "^22.0.1",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
   },

@@ -12,6 +12,7 @@ import {
   verifyEmailSchema,
 } from '../../types/auth.js';
 import type { UserResponse } from '../../types/auth.js';
+import { logActivity } from '../lib/activity-log.js';
 
 const router = Router();
 
@@ -63,6 +64,8 @@ router.post('/register', async (req, res) => {
       [user.id, sessionToken, expiresAt],
     );
 
+    await logActivity(user.id, 'signup', { email: user.email }, req.ip ?? undefined);
+
     res.status(201).json({ user, token });
   } catch (err) {
     console.error('Register error:', err);
@@ -103,6 +106,8 @@ router.post('/login', async (req, res) => {
       'INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [user.id, sessionToken, expiresAt],
     );
+
+    await logActivity(user.id, 'login', { email: user.email }, req.ip ?? undefined);
 
     res.json({ user, token });
   } catch (err) {

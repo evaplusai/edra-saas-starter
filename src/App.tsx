@@ -9,7 +9,13 @@ import { PublicRoute } from '@/components/public-route';
 import DashboardLayout from '@/pages/dashboard/layout';
 import DashboardHome from '@/pages/dashboard/index';
 import SettingsPage from '@/pages/dashboard/settings';
+import ProfilePage from '@/pages/dashboard/profile';
+import ApiKeysPage from '@/pages/dashboard/api-keys';
 import AdminPage from '@/pages/dashboard/admin';
+import AdminUsersPage from '@/pages/admin/users';
+import AdminAnalyticsPage from '@/pages/admin/analytics';
+import AdminActivityPage from '@/pages/admin/activity';
+import SubscriptionPage from '@/pages/dashboard/subscription';
 import LoginPage from '@/pages/auth/login';
 import SignupPage from '@/pages/auth/signup';
 import ForgotPasswordPage from '@/pages/auth/forgot-password';
@@ -38,8 +44,14 @@ function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/dashboard" element={<DashboardLayout />}>
                     <Route index element={<DashboardHome />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="api-keys" element={<ApiKeysPage />} />
                     <Route path="settings" element={<SettingsPage />} />
+                    <Route path="subscription" element={<SubscriptionPage />} />
                     <Route path="admin" element={<AdminPage />} />
+                    <Route path="admin/users" element={<AdminUsersPage />} />
+                    <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
+                    <Route path="admin/activity" element={<AdminActivityPage />} />
                   </Route>
                 </Route>
               </Routes>

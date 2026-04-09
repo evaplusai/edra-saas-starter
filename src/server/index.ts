@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import apiKeyRoutes from './routes/api-keys.js';
+import notificationRoutes from './routes/notifications.js';
+import billingRoutes from './routes/billing.js';
+import adminRoutes from './routes/admin.js';
+import usersRoutes from './routes/users.js';
 import { apiKeyAuth } from './middleware/api-key-auth.js';
 
 dotenv.config();
@@ -16,6 +20,8 @@ app.use(cors({
   origin: process.env.APP_URL ?? 'http://localhost:5173',
   credentials: true,
 }));
+// Stripe webhook needs raw body — must be registered before express.json()
+app.use('/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // API key authentication (runs before routes, passes through if no sk_ token)
@@ -24,6 +30,10 @@ app.use(apiKeyAuth);
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api-keys', apiKeyRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/billing', billingRoutes);
+app.use('/admin', adminRoutes);
+app.use('/users', usersRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {
