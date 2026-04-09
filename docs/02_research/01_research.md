@@ -2,72 +2,111 @@
 
 **Date:** 2026-04-09
 **Status:** Active
-**Author:** Engineering
 
 ---
 
 ## 1. Executive Summary
 
-edra-saas-starter is a SaaS starter kit built for agentic AI applications. It ships standard SaaS infrastructure (auth, payments, dashboards) but its primary purpose is to serve as the foundation for systems where AI agents act autonomously, learn from outcomes, and coordinate with each other. Traditional SaaS starters assume human-driven CRUD workflows. Agentic applications require fundamentally different infrastructure: semantic memory via vector search, adaptive learning loops, agent coordination primitives, and real-time state management. This document defines the feature requirements that distinguish an agentic SaaS product from a conventional one, makes opinionated technical decisions, and lays out an 8-week development plan to ship a production-ready product.
+edra-starter is a reusable SaaS portal template. Clone it, configure env vars, start building product features. It ships standard SaaS infrastructure (auth, payments, dashboards, landing page) on a React + Vite + RuVector-Postgres stack. The template follows Ruv's actual development patterns: flat component structure, local state management, Tailwind + CSS variables for theming, and shadcn/ui primitives. RuVector-Postgres is the database — it handles all relational queries like standard Postgres.
 
 ---
 
-## 2. What Makes Agentic SaaS Different
+## 2. How Ruv Builds Things
 
-Traditional SaaS follows a simple loop: a user clicks a button, the server runs a query, and a response comes back. The application is stateless between requests. The database is a record store. The complexity lives in the UI.
+Before designing the template, we studied how Ruv actually structures projects across vibing (landing page), infinity-ui (component library), RuView (desktop dashboard), and ruvocal (full-stack chat app). These are the real patterns.
 
-Agentic SaaS inverts this. The AI agent is the primary actor, not the human. The human sets goals, monitors progress, and intervenes when needed. The agent reasons about tasks, retrieves relevant context from memory, executes multi-step plans, and improves over time based on outcomes.
+### Project Structure
 
-This changes infrastructure requirements in four specific ways:
+```
+src/
+├── App.tsx              # Root: providers + router
+├── main.tsx             # Entry point
+├── pages/               # One file per page
+├── components/          # Flat with feature folders when needed
+│   ├── ui/              # shadcn/ui primitives (button, dialog, etc.)
+│   └── [Feature].tsx    # Self-contained feature components
+├── hooks/               # Custom React hooks
+├── lib/                 # Utilities and helpers
+├── types/               # TypeScript interfaces
+└── styles/              # Global CSS + Tailwind config
+```
 
-**Semantic memory, not just row storage.** Agents need to retrieve information by meaning, not by ID. A coding agent searching for "how we handled auth in the payments service" needs vector similarity search, not `SELECT * WHERE id = 5`. This means the database must support both relational queries and vector operations natively.
+### App Bootstrap
 
-**Asynchronous execution, not request-response.** Agents run tasks that take seconds to hours. They cannot block an HTTP request. The system needs robust background job processing, status tracking, and completion callbacks.
+Every Ruv React project nests providers the same way:
 
-**Agent coordination.** Multiple agents working on related tasks need shared state, conflict resolution, and the ability to hand off work. This is distributed systems territory, not CRUD territory.
+```tsx
+<QueryClientProvider>
+  <TooltipProvider>
+    <Toaster /> <Sonner />
+    <BrowserRouter>
+      <Routes />
+    </BrowserRouter>
+  </TooltipProvider>
+</QueryClientProvider>
+```
 
-**Adaptive learning.** The system must record what works, extract patterns, and apply those patterns to future tasks. This is the feedback loop that separates a useful agentic product from a chatbot with extra steps.
+### State Management
 
-Standard SaaS starters address none of these. They give you a login form, a Stripe integration, and a dashboard. That is necessary but insufficient.
+Local component state with `useState`. No Redux, no Zustand, no global stores. Data is passed via props. Server state via React Query. Components are self-contained — each manages its own lifecycle.
+
+### Styling
+
+- **Tailwind CSS** — utility-first, responsive breakpoints (sm/md/lg)
+- **CSS variables** — HSL-based color tokens in `:root` and `.dark` for theming
+- **next-themes** — dark/light mode toggle
+- **CSS keyframes** — custom animations (fade-in, blink, pulse)
+- **No CSS-in-JS** — no styled-components, no emotion
+
+### Components
+
+- shadcn/ui primitives (copied into project, not imported from node_modules)
+- Radix UI headless components underneath
+- Lucide React for icons
+- Components stay under 500 lines
+- Small (<2KB), Medium (2-8KB), Large (8-15KB) — nothing over 20KB
+
+### Adding a New Feature
+
+No plugin system. The actual pattern:
+
+1. Create a page: `src/pages/MyFeature.tsx`
+2. Add a route in `App.tsx`
+3. Add a sidebar item to the nav config array
+4. Create components in `src/components/` as needed
+5. Add API endpoints if the feature needs a backend
+
+That's it. No manifests, no registration system.
 
 ---
 
-## 3. Feature Requirements for Agentic SaaS
+## 3. Feature Breakdown
 
-### Foundation (must ship first)
+### Portal Features (ships with every clone)
 
-| Feature | Traditional SaaS Need | Agentic SaaS Need |
-|---------|----------------------|-------------------|
-| Auth & RBAC | User login, role-based UI | API key management for agents, scoped permissions per agent type, token-based auth for service-to-service calls |
-| Payments | Subscription tiers | Usage-based billing (agents consume variable compute), metered API access, cost controls per agent |
-| Dashboard | User profile, settings | Agent activity monitoring, task queue visibility, cost tracking, error rates, learning metrics |
+| Feature | What Ships | Priority |
+|---------|-----------|----------|
+| **Auth** | Email/password, Google OAuth, email verification, password reset, JWT sessions, protected routes | Sprint 1 |
+| **RBAC** | Admin/user roles, route guards, API middleware | Sprint 1 |
+| **API Keys** | Generate, revoke, scope — for service-to-service access | Sprint 1 |
+| **Dashboard Shell** | Sidebar nav (config array), header, responsive layout, dark/light mode | Sprint 1 |
+| **Stripe Payments** | Free/Pro/Enterprise tiers, checkout, customer portal, webhooks | Sprint 2 |
+| **Admin Panel** | User management (list, search, edit, disable), revenue analytics (Recharts), activity logs, daily stats job | Sprint 2 |
+| **User Dashboard** | Profile, settings, subscription status, API key management | Sprint 2 |
+| **Landing Page** | Hero, features grid, pricing (synced with Stripe), testimonials, CTA, footer, responsive | Sprint 3 |
+| **Email** | Transactional: welcome, password reset, subscription confirm | Sprint 3 |
+| **File Uploads** | S3-compatible presigned URLs, avatar upload | Sprint 3 |
+| **SEO** | Meta tags, OG tags, sitemap, robots.txt, JSON-LD | Sprint 3 |
+| **Analytics** | Page view tracking, behavior tracking | Sprint 3 |
+| **Cookie Consent** | Banner with preference storage | Sprint 3 |
+| **Blog/Docs** | Markdown-based pages | Sprint 3 |
+| **Notifications** | In-app notification system | Sprint 3 |
+| **Background Jobs** | Postgres-backed queue, worker process, retry, status API | Sprint 2 |
+| **Privacy/Legal** | Privacy policy, terms pages | Sprint 4 |
+| **E2E Tests** | Auth, payments, dashboard flows | Sprint 4 |
+| **Deployment** | Docker build, Google Cloud Run, CI pipeline | Sprint 4 |
 
-Auth is the first gate. Agents authenticate differently than humans. They need API keys with fine-grained scopes (read-only memory access, write access to specific namespaces, execution permissions). RBAC must support both human roles (admin, user) and agent roles (coder, reviewer, researcher) with independent permission sets.
-
-Payments must handle usage-based billing. A user running 10 agents concurrently consumes more than a user running 1. Flat subscription tiers work for gating feature access, but compute and API call metering drives the real cost model.
-
-The dashboard is the human's window into agent activity. It must show what agents are doing right now, what they completed, what failed and why, and how costs are tracking. This is closer to an observability platform than a typical user settings page.
-
-### Agent Infrastructure
-
-**Vector database (semantic memory).** This is the core differentiator. Agents store and retrieve knowledge by meaning. Implementation requires: embedding generation for text inputs, similarity search with configurable distance metrics, hybrid search combining vector and relational filters, and namespace isolation so agents and users do not pollute each other's memory. RuVector-Postgres handles this by extending Postgres with native vector operations, avoiding the operational overhead of running a separate vector database.
-
-**Background jobs.** Every agent task is a background job. The system needs: reliable job queuing with retry logic, priority scheduling (urgent agent tasks jump the queue), progress tracking exposed via API, and dead letter handling for failed tasks. This is not optional or nice-to-have. Without it, agents cannot function.
-
-**Real-time notifications.** Agents completing tasks, encountering errors, or requesting human approval must push updates instantly. WebSocket connections for the dashboard, webhook callbacks for integrations, and SSE for lightweight status streams. Polling is not acceptable for agentic workflows.
-
-**Self-learning hooks.** The system records agent actions and outcomes, extracts patterns from successful runs, and applies those patterns to route future tasks more effectively. This is what makes the system improve over time rather than repeating the same mistakes.
-
-### Standard SaaS (needed but not the differentiator)
-
-These features are table stakes. They do not require novel thinking for agentic applications:
-
-- **Landing page** -- hero, features grid, pricing table, testimonials, CTA. Use a proven template. Do not over-invest here.
-- **SEO** -- meta tags, OG tags, sitemap, robots.txt, JSON-LD structured data. Standard implementation.
-- **Email** -- transactional only at launch (welcome, password reset, subscription confirmation). Marketing email comes later.
-- **File uploads** -- S3-compatible storage for avatars and agent artifacts. Standard presigned URL flow.
-- **Cookie consent, dark mode, animations** -- legal compliance and polish. Ship last.
-- **Blog/docs** -- MDX-based content. Important for SEO and onboarding but not a sprint 1 priority.
+The template uses **RuVector-Postgres** as its database. For standard CRUD (users, subscriptions, logs), it behaves like normal Postgres.
 
 ---
 
@@ -76,97 +115,122 @@ These features are table stakes. They do not require novel thinking for agentic 
 ### Sprint 1 (Week 1-2): Foundation
 
 **Deliverables:**
-- React + Vite project scaffold with TypeScript strict mode
-- Authentication system: email/password signup and login, Google OAuth, email verification flow, password reset, session management with JWT
-- RBAC implementation: admin and user roles, protected routes, middleware for API route guards
-- API key system: generate, revoke, and scope API keys for agent access
-- Database schema: users, sessions, api_keys, roles tables in Postgres
-- Basic layout shell: sidebar navigation, header, responsive container
+- Vite + React 18 + TypeScript strict mode scaffold
+- Tailwind CSS + shadcn/ui setup (copy in button, dialog, input, card, dropdown, toast, etc.)
+- CSS variables for theming, next-themes for dark/light toggle
+- App.tsx with provider nesting (QueryClient → Tooltip → Toaster + Sonner → Router)
+- Auth: email/password signup/login, Google OAuth, email verification, password reset, JWT sessions
+- RBAC: admin/user roles, route guard component, API middleware
+- API key system: generate, revoke, scope per key
+- Database schema in RuVector-Postgres: users, sessions, api_keys, roles
+- Dashboard layout: sidebar from config array, header with user menu, main content area
+- Dark/light mode toggle in header
 
-**Skip for now:** Payments, landing page, SEO, email sending (stub the interfaces).
-
-**Tech setup:** Vite dev server, Vitest for unit tests, Playwright installed but not yet scripted, ESLint + Prettier configured, Docker Compose for local Postgres.
-
-### Sprint 2 (Week 3-4): Agent Infrastructure
-
-**Deliverables:**
-- RuVector-Postgres integration: vector extension enabled, embedding storage and retrieval API, similarity search endpoint with configurable distance metrics
-- Memory namespace system: isolated vector stores per user and per agent type
-- Background job processor: job queue table, worker process, retry with exponential backoff, dead letter queue, status API endpoint
-- Agent task API: create task, get task status, cancel task, list tasks with filtering
-- WebSocket server for real-time dashboard updates
-- Webhook system for external integrations (task complete, task failed events)
-- Self-learning hooks: action logging, outcome recording, basic pattern extraction
-
-**Skip for now:** Advanced learning algorithms, multi-agent coordination protocols.
-
-### Sprint 3 (Week 5-6): Dashboard & Monitoring
+### Sprint 2 (Week 3-4): Core Features
 
 **Deliverables:**
-- User dashboard: active agents view, task history with status filters, memory usage stats, cost summary
-- Admin dashboard: user management table (list, search, disable), revenue analytics (MRR, churn, growth), agent activity aggregate (tasks/day, success rate, avg duration), system health indicators
-- Agent detail view: task log, memory contents, performance metrics per agent
-- Activity log with filtering and export
-- Daily stats aggregation job
-- Profile and settings pages: update email, change password, manage API keys, notification preferences
+- Stripe integration: 3 tiers, checkout flow, customer portal link, webhook handlers, subscription status in DB
+- Admin dashboard page: user management table with search, revenue chart (Recharts), activity log, daily stats cron job
+- User dashboard page: profile form (React Hook Form + Zod), settings, subscription status card, API key management
+- Background job runner: jobs table in Postgres, worker process, exponential backoff retry, dead letter handling, status API
+- Notification system: notifications table, real-time updates via SSE or WebSocket, bell icon with unread count
+
+### Sprint 3 (Week 5-6): Landing & Standard Features
+
+**Deliverables:**
+- Landing page: hero section, 6-item features grid, pricing table (reads from Stripe tiers), testimonials carousel, CTA section, footer with links, fully responsive
+- Scroll reveal animations (Framer Motion `whileInView`)
+- Transactional email: welcome on signup, password reset link, subscription confirmation (Resend or AWS SES)
+- File uploads: S3-compatible presigned URL flow, avatar upload on profile page
+- SEO: meta tags component, OG tags, auto-generated sitemap, robots.txt, JSON-LD on landing page
+- Cookie consent banner with preference storage
+- Analytics: page view tracking, basic behavior events
+- Blog/docs: markdown pages with frontmatter, listing page, individual post page
+- Privacy policy and terms of service pages
 
 ### Sprint 4 (Week 7-8): Polish & Ship
 
 **Deliverables:**
-- Stripe integration: Free/Pro/Enterprise tiers, checkout flow, customer portal, webhook handlers for subscription lifecycle, usage metering for compute costs
-- Landing page: hero section, features grid (6 items), pricing table synced with Stripe, testimonials section, CTA, footer with links, fully responsive
-- Transactional email: welcome email, password reset, subscription confirmation (use Resend or AWS SES)
-- SEO: meta tags on all pages, OG tags, auto-generated sitemap, robots.txt, JSON-LD for landing page
-- File upload: S3-compatible presigned upload for avatars
-- Cookie consent banner, dark/light mode toggle
-- E2E test suite: auth flows, payment flows, agent task creation, dashboard rendering
-- Docker build for GCR deployment, CI pipeline
-- Privacy policy and terms of service pages
+- E2E test suite (Playwright): auth flows, payment flows, dashboard navigation, admin panel
+- Database seeding script for development
+- Docker build optimized for Google Cloud Run
+- CI pipeline (GitHub Actions): lint, typecheck, test, build, deploy
+- Page transitions and micro-interactions (Framer Motion)
+- Lighthouse audit pass (performance, accessibility, SEO)
+- README: how to clone, configure env vars, run locally, deploy
+- Example page showing how to add a new feature to the template
 
 ---
 
 ## 5. Technical Decisions
 
-**React + Vite over Next.js.** Agentic dashboards are SPAs, not content sites. We need fast HMR, simple client-side routing, and no SSR complexity. Vite builds are sub-second. Next.js App Router adds overhead we do not need.
+**React + Vite** — SPA dashboard, sub-second HMR, no SSR overhead. Ruv uses this for all React projects.
 
-**RuVector-Postgres over Prisma + Pinecone.** Running vector search inside Postgres eliminates a separate service, reduces latency (no network hop to an external vector DB), and keeps relational joins available alongside similarity queries. One database, one connection pool, one backup strategy.
+**RuVector-Postgres** — Standard Postgres. One database, one connection, one backup.
 
-**Tailwind + shadcn/ui over Material UI.** Tailwind gives full design control without fighting a component library's opinions. shadcn/ui provides accessible, unstyled primitives built on Radix that we own (copied into the project, not imported from node_modules). No version lock-in.
+**Tailwind + shadcn/ui** — Ruv's consistent stack across vibing, infinity-ui, and component work. Primitives copied into project (no version lock-in). Radix underneath for accessibility.
 
-**SPARC methodology.** Specification, Pseudocode, Architecture, Refinement, Completion. Each feature goes through structured phases rather than ad-hoc implementation. This matters more for agentic features where the interaction model is novel and needs upfront design.
+**Local state + React Query** — Ruv pattern: `useState` for UI state, React Query for server state. No global store libraries.
 
----
+**React Hook Form + Zod** — Ruv's form/validation stack across all projects.
 
-## 6. Risks & How to Move Fast
+**Postgres job queue** — Simple and good enough. No Redis dependency for a starter. Upgrade path exists if throughput demands it.
 
-**Do not over-engineer the vector layer.** RuVector supports advanced features (HNSW tuning, custom distance metrics, hybrid indexes). Start with default cosine similarity and pgvector basics. Optimize only when query latency data says you must.
-
-**Ship standard SaaS features using proven patterns.** Auth, payments, and dashboards are solved problems. Use battle-tested libraries (better-auth or lucia for auth, Stripe SDK directly, shadcn/ui for components). Do not build custom versions of things that already work.
-
-**Add agentic capabilities incrementally.** Sprint 2 delivers the minimum agent infrastructure. Advanced features (multi-agent coordination, sophisticated learning algorithms, agent-to-agent communication) ship after the core product works and has users.
-
-**Avoid these traps:**
-- Scope creep from the vector database feature set. You need store, search, and delete. Not every indexing strategy on day one.
-- Premature optimization of background jobs. Start with a simple Postgres-backed queue. Switch to Redis or a dedicated queue only if throughput demands it.
-- Building what you can import. Do not write a custom OAuth flow, a custom rich text editor, or a custom charting library. Import them.
-- Designing for scale before you have users. A single Postgres instance handles more than most early-stage products will ever need.
+**SPARC methodology** — Structured phases (Specification → Pseudocode → Architecture → Refinement → Completion) for building each feature. Especially useful for non-trivial features where upfront design prevents rework.
 
 ---
 
-## 7. References
+## 6. How to Reuse the Template
 
-1. Anthropic. "Building Effective Agents." Anthropic Research Blog, 2025. Patterns for tool use, planning, and agent coordination in production systems.
+```bash
+# 1. Clone
+git clone <edra-starter-url> my-new-project
+cd my-new-project
 
-2. LangChain Team. "LangGraph: Multi-Agent Orchestration Framework." LangChain Documentation, 2025. State machines for agent workflows, persistence, and human-in-the-loop patterns.
+# 2. Configure
+cp .env.example .env
+# Edit: Stripe keys, OAuth credentials, email provider, S3 bucket, database URL
 
-3. OpenAI. "Agents SDK and Agent Protocol." OpenAI Platform Documentation, 2025. Standardized agent communication protocols and tool-use patterns.
+# 3. Run
+npm install
+npm run dev
+# Portal running at localhost:5173
 
-4. pgvector Contributors. "pgvector 0.8: HNSW and IVFFlat Performance Benchmarks." GitHub, 2025. Sub-millisecond vector search at million-scale within Postgres.
+# 4. Add a feature page
+# Create src/pages/MyFeature.tsx
+# Add route to App.tsx
+# Add sidebar item to nav config
 
-5. RuVector Project. "RuVector-Postgres: Unified Vector and Relational Database." RuVector Documentation, 2026. Architecture guide for embedding vector operations into Postgres for agentic workloads.
+# 5. Deploy
+docker build -t my-project .
+# Push to GCR, done
+```
 
-6. Bessemer Venture Partners. "State of the Cloud 2025." BVP Cloud Index, 2025. SaaS market trends, usage-based pricing adoption, and AI-native application growth.
+For each new project: clone, swap env vars, remove pages you don't need, add pages you do. The sidebar nav is a config array — add or remove items in one place.
 
-7. Sequoia Capital. "AI Agent Infrastructure: The Next Platform Shift." Sequoia Blog, 2025. Analysis of infrastructure requirements for autonomous AI agent products.
+---
 
-8. SPARC Framework. "Structured Development for Agentic Systems." SPARC Documentation, 2026. Methodology specification for phase-gated development of AI-first applications.
+## 7. Risks & Speed
+
+**Move fast by not building what exists.** Use shadcn/ui components as-is. Use Stripe's hosted checkout. Use Resend for email. Use S3-compatible storage. Don't build custom versions.
+
+**Keep components small.** Ruv keeps components under 500 lines. If a component grows, split it. Self-contained components are easier to reuse across project clones.
+
+**Ship the template before optimizing it.** Sprint 1-4 delivers a working portal. Performance tuning, advanced animations, and sophisticated analytics come after it's deployed and has users.
+
+**What to avoid:**
+- Inventing abstractions the Ruv stack doesn't use
+- Building a framework on top of a framework
+- Designing for scale before you have users
+
+---
+
+## 8. References
+
+1. Anthropic. "Building Effective Agents." Anthropic Research Blog, 2025.
+
+2. shadcn. "shadcn/ui: Beautifully Designed Components." shadcn Documentation, 2025.
+
+3. Bessemer Venture Partners. "State of the Cloud 2025." BVP Cloud Index, 2025.
+
+4. SPARC Framework. "Structured Development for Applications." SPARC Documentation, 2026.
