@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { User, Upload } from 'lucide-react';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -27,6 +27,27 @@ const passwordSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
+
+async function uploadAvatar(file: File): Promise<string> {
+  const presignRes = await apiFetch<{ uploadUrl: string; key: string }>('/uploads/presign', {
+    method: 'POST',
+    body: JSON.stringify({
+      filename: file.name,
+      mimeType: file.type,
+      size: file.size,
+    }),
+  });
+
+  await fetch(presignRes.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+
+  const bucket = import.meta.env.VITE_S3_BUCKET ?? '';
+  const region = import.meta.env.VITE_S3_REGION ?? 'us-east-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/${presignRes.key}`;
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -46,6 +67,40 @@ export default function ProfilePage() {
       confirm_password: '',
     },
   });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const avatarUrl = await uploadAvatar(file);
+      await apiFetch('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ avatar_url: avatarUrl }),
+      });
+      return avatarUrl;
+    },
+    onSuccess: () => {
+      toast.success('Avatar updated successfully');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Please select a JPEG, PNG, or WebP image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be smaller than 5MB');
+      return;
+    }
+
+    uploadAvatarMutation.mutate(file);
+  };
 
   const updateProfile = useMutation({
     mutationFn: (data: ProfileFormData) =>
@@ -86,14 +141,34 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-lg">
-                <User className="h-8 w-8" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative group">
+              <Avatar className="h-16 w-16">
+                {user?.avatar_url && <AvatarImage src={user.avatar_url} alt={user.name ?? 'Avatar'} />}
+                <AvatarFallback className="text-lg">
+                  <User className="h-8 w-8" />
+                </AvatarFallback>
+              </Avatar>
+              <label
+                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+                htmlFor="avatar-upload"
+              >
+                <Upload className="h-5 w-5 text-white" />
+              </label>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+                disabled={uploadAvatarMutation.isPending}
+              />
+            </div>
             <div>
               <p className="font-medium">{user?.name ?? 'No name set'}</p>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
+              {uploadAvatarMutation.isPending && (
+                <p className="text-xs text-muted-foreground">Uploading...</p>
+              )}
             </div>
           </div>
 

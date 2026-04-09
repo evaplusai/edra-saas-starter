@@ -7,10 +7,10 @@ describe('App', () => {
     window.localStorage.clear();
   });
 
-  it('renders the login page when unauthenticated', async () => {
+  it('renders the landing page at root', async () => {
     render(<App />);
     expect(
-      await screen.findByText('Welcome back'),
+      await screen.findByText(/Build your SaaS/i),
     ).toBeInTheDocument();
   });
 });

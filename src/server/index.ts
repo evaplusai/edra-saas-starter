@@ -8,6 +8,8 @@ import notificationRoutes from './routes/notifications.js';
 import billingRoutes from './routes/billing.js';
 import adminRoutes from './routes/admin.js';
 import usersRoutes from './routes/users.js';
+import uploadRoutes from './routes/uploads.js';
+import analyticsRoutes from './routes/analytics.js';
 import { apiKeyAuth } from './middleware/api-key-auth.js';
 
 dotenv.config();
@@ -34,6 +36,8 @@ app.use('/notifications', notificationRoutes);
 app.use('/billing', billingRoutes);
 app.use('/admin', adminRoutes);
 app.use('/users', usersRoutes);
+app.use('/uploads', uploadRoutes);
+app.use('/analytics', analyticsRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {

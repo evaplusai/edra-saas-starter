@@ -13,6 +13,7 @@ import {
 } from '../../types/auth.js';
 import type { UserResponse } from '../../types/auth.js';
 import { logActivity } from '../lib/activity-log.js';
+import { enqueueJob } from '../lib/job-queue.js';
 
 const router = Router();
 
@@ -65,6 +66,16 @@ router.post('/register', async (req, res) => {
     );
 
     await logActivity(user.id, 'signup', { email: user.email }, req.ip ?? undefined);
+
+    const appUrl = process.env.APP_URL ?? 'http://localhost:5173';
+    await enqueueJob('send_email', {
+      to: user.email,
+      template: 'welcome',
+      vars: {
+        name: user.name ?? user.email,
+        verifyUrl: `${appUrl}/verify-email?token=${sessionToken}`,
+      },
+    });
 
     res.status(201).json({ user, token });
   } catch (err) {
@@ -184,7 +195,19 @@ router.post('/forgot-password', async (req, res) => {
         [userId, token, expiresAt],
       );
 
-      // TODO: Queue email job with the reset token
+      const userNameResult = await query('SELECT name, email FROM users WHERE id = $1', [userId]);
+      const userName = (userNameResult.rows[0]?.name as string) ?? (userNameResult.rows[0]?.email as string) ?? '';
+      const appUrl = process.env.APP_URL ?? 'http://localhost:5173';
+
+      await enqueueJob('send_email', {
+        to: email.toLowerCase(),
+        template: 'password-reset',
+        vars: {
+          name: userName,
+          resetUrl: `${appUrl}/reset-password?token=${token}`,
+          expiresIn: '1 hour',
+        },
+      });
     }
 
     res.json({ success: true });

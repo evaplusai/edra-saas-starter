@@ -1,5 +1,16 @@
 import '@testing-library/jest-dom/vitest';
 
+// Mock IntersectionObserver for framer-motion whileInView
+class IntersectionObserverMock {
+  observe = () => {};
+  unobserve = () => {};
+  disconnect = () => {};
+}
+Object.defineProperty(window, 'IntersectionObserver', {
+  writable: true,
+  value: IntersectionObserverMock,
+});
+
 // Mock window.matchMedia for next-themes in jsdom
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
