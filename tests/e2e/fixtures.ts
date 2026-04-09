@@ -23,6 +23,21 @@ export const seedUser: TestUser = {
 };
 
 /**
+ * Wait for the app to finish its initial auth check.
+ * The ProtectedRoute shows "Loading..." while useAuth().isLoading is true,
+ * then either redirects to /login or renders the child route.
+ * For public pages, we just wait for the main content to render.
+ */
+export async function waitForAuthResolved(page: Page) {
+  // Wait for the loading indicator to disappear (if present)
+  const loadingEl = page.getByText('Loading...');
+  // Give it a moment to appear, then wait for it to disappear
+  await loadingEl.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {
+    // Loading text may never appear if auth resolves immediately (no token)
+  });
+}
+
+/**
  * Register a new user via the signup form.
  * Waits for navigation away from /signup after submission.
  */

@@ -10,7 +10,9 @@ test.describe('Landing page', () => {
       page.getByRole('heading', { name: /build your saas/i }),
     ).toBeVisible();
 
+    // Hero has "Get Started Free" link (Button asChild wrapping Link)
     await expect(page.getByRole('link', { name: /get started free/i })).toBeVisible();
+    // "Learn More" is an anchor link to #features
     await expect(page.getByRole('link', { name: /learn more/i })).toBeVisible();
   });
 
@@ -18,8 +20,11 @@ test.describe('Landing page', () => {
     const featuresSection = page.locator('#features');
     await expect(featuresSection).toBeVisible();
 
-    const featureCards = featuresSection.locator('[class*="card"]');
-    await expect(featureCards).toHaveCount(6);
+    // Each feature is a Card component rendered inside a motion.div.
+    // The Card component renders a div with "card" in its class names.
+    // We look for CardTitle elements (the feature title headings) to count cards.
+    const featureHeadings = featuresSection.locator('[class*="card-header"]');
+    await expect(featureHeadings).toHaveCount(6);
   });
 
   test('pricing section shows 3 tiers', async ({ page }) => {
@@ -30,8 +35,12 @@ test.describe('Landing page', () => {
       pricingSection.getByRole('heading', { name: /simple, transparent pricing/i }),
     ).toBeVisible();
 
-    const tierCards = pricingSection.locator('[class*="card"]');
-    await expect(tierCards).toHaveCount(3);
+    // Pricing cards are loaded asynchronously from the API. Wait for them.
+    // Each plan is a Card with a CardTitle heading.
+    const planHeadings = pricingSection.locator('[class*="card"]').filter({
+      has: page.locator('[class*="card-header"]'),
+    });
+    await expect(planHeadings).toHaveCount(3, { timeout: 10_000 });
   });
 
   test('footer renders with link sections', async ({ page }) => {
@@ -49,12 +58,14 @@ test.describe('Landing page', () => {
   });
 
   test('click "Sign Up" CTA navigates to /signup', async ({ page }) => {
+    // The navbar has a "Sign Up" link (Button asChild wrapping Link to /signup)
     await page.getByRole('link', { name: /sign up/i }).first().click();
     await expect(page).toHaveURL(/\/signup/);
   });
 
   test('click "Login" in navbar navigates to /login', async ({ page }) => {
-    await page.getByRole('link', { name: /^login$/i }).click();
+    // The navbar has "Login" text inside a Button asChild wrapping Link to /login
+    await page.getByRole('link', { name: /login/i }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 });

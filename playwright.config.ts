@@ -24,6 +24,10 @@ export default defineConfig({
       url: 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
+      env: {
+        ...process.env,
+        VITE_API_URL: 'http://localhost:3001',
+      },
     },
     {
       command: 'npx tsx src/server/index.ts',
@@ -31,6 +35,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
       env: {
+        ...process.env,
         DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5433/edra_test',
         JWT_SECRET: process.env.JWT_SECRET ?? 'test-secret-key-for-e2e-testing-min32chars',
         APP_URL: 'http://localhost:5173',

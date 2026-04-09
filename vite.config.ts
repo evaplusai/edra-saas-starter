@@ -16,6 +16,10 @@ export default defineConfig({
       ignored: ['**/upstream/**', '**/.claude/**', '**/.claude-flow/**'],
     },
   },
+  optimizeDeps: {
+    entries: ['index.html'],
+    exclude: ['upstream'],
+  },
   build: {
     rollupOptions: {
       external: [/^upstream\//],

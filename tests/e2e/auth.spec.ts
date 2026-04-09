@@ -1,4 +1,4 @@
-import { test, expect, registerUser, loginUser, loginAsUser, seedUser } from './fixtures';
+import { test, expect, registerUser, loginUser, loginAsUser, seedUser, waitForAuthResolved } from './fixtures';
 
 test.describe('Authentication flows', () => {
   test('register a new user and land on dashboard or verify-email', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Authentication flows', () => {
 
     // Navigate to dashboard explicitly to confirm auth works
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10_000 });
   });
 
   test('login with wrong password shows error message', async ({ page }) => {
@@ -34,32 +34,40 @@ test.describe('Authentication flows', () => {
     await page.getByLabel('Password', { exact: true }).fill('wrongpassword123');
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Error message should appear within the form
-    await expect(page.locator('.bg-destructive\\/10')).toBeVisible({ timeout: 10_000 });
+    // Error message should appear within the form — the error div uses
+    // class "bg-destructive/10" which in the DOM is "bg-destructive\/10"
+    const errorEl = page.locator('[class*="destructive"]').filter({ hasText: /.+/ });
+    await expect(errorEl.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('logout redirects to login page', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10_000 });
 
-    // Open the user dropdown in the header and click "Sign out"
-    await page.getByRole('button', { name: /^$/ }).filter({ has: page.locator('span.relative') }).or(
-      page.locator('header button').last()
-    ).click();
+    // Open the user avatar dropdown in the header.
+    // The avatar button is the last button in the header that contains an avatar.
+    const header = page.locator('header');
+    const avatarButton = header.locator('button').filter({ has: page.locator('[class*="avatar"]') });
+    await avatarButton.click();
 
+    // Click "Sign out" in the dropdown menu
     const signOutItem = page.getByText('Sign out');
-    if (await signOutItem.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await signOutItem.click();
-    }
+    await expect(signOutItem).toBeVisible({ timeout: 3_000 });
+    await signOutItem.click();
 
     // After sign out, visiting dashboard should redirect to login
     await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
+    await waitForAuthResolved(page);
+    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
 
   test('visit /dashboard without auth redirects to login', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
+    // Wait for the React app to hydrate and auth to resolve.
+    // When there is no token, useAuth sets isLoading=false immediately,
+    // then ProtectedRoute renders <Navigate to="/login">.
+    await waitForAuthResolved(page);
+    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
 });

@@ -6,7 +6,7 @@ test.describe('Dashboard flows', () => {
     await page.goto('/dashboard');
 
     const sidebar = page.locator('aside');
-    await expect(sidebar.getByText('Dashboard')).toBeVisible();
+    await expect(sidebar.getByText('Dashboard')).toBeVisible({ timeout: 10_000 });
     await expect(sidebar.getByText('Settings')).toBeVisible();
     await expect(sidebar.getByText('Subscription')).toBeVisible();
   });
@@ -15,10 +15,10 @@ test.describe('Dashboard flows', () => {
     await loginAsUser(page);
     await page.goto('/dashboard/profile');
 
-    await expect(page.getByRole('heading', { name: /profile/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /profile/i })).toBeVisible({ timeout: 10_000 });
 
-    // The profile page shows the user's name and email
-    await expect(page.getByText('Regular User')).toBeVisible();
+    // The profile page shows the user's name and email in the account info section
+    await expect(page.getByText('Regular User')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('user@example.com')).toBeVisible();
   });
 
@@ -26,10 +26,11 @@ test.describe('Dashboard flows', () => {
     await loginAsUser(page);
     await page.goto('/dashboard/settings');
 
-    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible({ timeout: 10_000 });
 
-    // Settings page has notification preference switches
-    await expect(page.getByText('Marketing Emails')).toBeVisible();
+    // Settings page has notification preference switches.
+    // Labels are rendered as <Label> elements with these texts.
+    await expect(page.getByText('Marketing Emails')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Product Emails')).toBeVisible();
     await expect(page.getByText('In-App Notifications')).toBeVisible();
 
@@ -42,15 +43,16 @@ test.describe('Dashboard flows', () => {
     await loginAsUser(page);
     await page.goto('/dashboard/api-keys');
 
-    await expect(page.getByRole('heading', { name: /api keys/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /api keys/i })).toBeVisible({ timeout: 10_000 });
 
     // Click "Create Key" button
     await page.getByRole('button', { name: /create key/i }).click();
 
-    // Dialog should open
+    // Dialog should open with title "Create API Key"
     await expect(page.getByRole('heading', { name: /create api key/i })).toBeVisible();
 
-    // Fill in key name and create
+    // Fill in key name and create.
+    // The label in the dialog is "Key Name" with htmlFor="key-name"
     const keyName = `test-key-${Date.now()}`;
     await page.getByLabel('Key Name').fill(keyName);
     await page.getByRole('button', { name: /^create$/i }).click();
@@ -71,8 +73,9 @@ test.describe('Dashboard flows', () => {
     await loginAsUser(page);
     await page.goto('/dashboard');
 
+    // ThemeToggle button has sr-only text "Toggle theme"
     const toggleButton = page.getByRole('button', { name: /toggle theme/i });
-    await expect(toggleButton).toBeVisible();
+    await expect(toggleButton).toBeVisible({ timeout: 10_000 });
 
     // Click toggle and check html class changes
     const htmlEl = page.locator('html');

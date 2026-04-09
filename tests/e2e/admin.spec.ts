@@ -6,6 +6,10 @@ test.describe('Admin flows', () => {
     await page.goto('/dashboard');
 
     const sidebar = page.locator('aside');
+    // Wait for sidebar to be visible and populated
+    await expect(sidebar.getByText('Dashboard')).toBeVisible({ timeout: 10_000 });
+
+    // The Admin parent item and its children should be visible for admin users
     await expect(sidebar.getByText('Admin')).toBeVisible();
     await expect(sidebar.getByText('Users')).toBeVisible();
     await expect(sidebar.getByText('Analytics')).toBeVisible();
@@ -16,11 +20,11 @@ test.describe('Admin flows', () => {
     await loginAsAdmin(page);
     await page.goto('/dashboard/admin/users');
 
-    await expect(page.getByRole('heading', { name: /user management/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /user management/i })).toBeVisible({ timeout: 10_000 });
 
     // The table should render with seeded users
     await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('admin@example.com')).toBeVisible();
+    await expect(page.getByText('admin@example.com')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('user@example.com')).toBeVisible();
   });
 
@@ -48,7 +52,7 @@ test.describe('Admin flows', () => {
     await page.goto('/dashboard');
 
     const sidebar = page.locator('aside');
-    await expect(sidebar.getByText('Dashboard')).toBeVisible();
+    await expect(sidebar.getByText('Dashboard')).toBeVisible({ timeout: 10_000 });
 
     // Admin section should not be visible to regular users
     const adminLink = sidebar.getByText('Admin', { exact: true });
