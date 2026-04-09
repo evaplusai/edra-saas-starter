@@ -1,12 +1,15 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
+import { AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/components/protected-route';
 import { PublicRoute } from '@/components/public-route';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { PageTransition } from '@/components/page-transition';
 import LandingLayout from '@/pages/landing/layout';
 import LandingIndex from '@/pages/landing/index';
 import DashboardLayout from '@/pages/dashboard/layout';
@@ -30,10 +33,64 @@ import DocPage from '@/pages/docs/[slug]';
 import PrivacyPage from '@/pages/legal/privacy';
 import TermsPage from '@/pages/legal/terms';
 import NotificationsPage from '@/pages/dashboard/notifications';
+import NotFoundPage from '@/pages/not-found';
 import { CookieConsent } from '@/components/cookie-consent';
 import { PageTrackingProvider } from '@/components/page-tracking-provider';
 
 const queryClient = new QueryClient();
+
+function AnimatedRoutes() {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<LandingLayout />}>
+          <Route index element={<PageTransition><LandingIndex /></PageTransition>} />
+        </Route>
+
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+          <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
+          <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
+          <Route path="/reset-password" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
+        </Route>
+
+        {/* Blog */}
+        <Route path="/blog" element={<PageTransition><BlogListingPage /></PageTransition>} />
+        <Route path="/blog/:slug" element={<PageTransition><BlogPostPage /></PageTransition>} />
+
+        {/* Docs */}
+        <Route path="/docs" element={<DocsLayout />}>
+          <Route index element={<PageTransition><DocPage /></PageTransition>} />
+          <Route path=":slug" element={<PageTransition><DocPage /></PageTransition>} />
+        </Route>
+
+        {/* Legal */}
+        <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
+        <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<PageTransition><DashboardHome /></PageTransition>} />
+            <Route path="profile" element={<PageTransition><ProfilePage /></PageTransition>} />
+            <Route path="api-keys" element={<PageTransition><ApiKeysPage /></PageTransition>} />
+            <Route path="settings" element={<PageTransition><SettingsPage /></PageTransition>} />
+            <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
+            <Route path="notifications" element={<PageTransition><NotificationsPage /></PageTransition>} />
+            <Route path="admin" element={<PageTransition><AdminPage /></PageTransition>} />
+            <Route path="admin/users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
+            <Route path="admin/analytics" element={<PageTransition><AdminAnalyticsPage /></PageTransition>} />
+            <Route path="admin/activity" element={<PageTransition><AdminActivityPage /></PageTransition>} />
+          </Route>
+        </Route>
+
+        {/* Catch-all 404 */}
+        <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
 
 function App() {
   return (
@@ -45,47 +102,9 @@ function App() {
             <AuthProvider>
               <BrowserRouter>
                 <PageTrackingProvider />
-                <Routes>
-                  <Route path="/" element={<LandingLayout />}>
-                    <Route index element={<LandingIndex />} />
-                  </Route>
-
-                  <Route element={<PublicRoute />}>
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/signup" element={<SignupPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  </Route>
-
-                  {/* Blog */}
-                  <Route path="/blog" element={<BlogListingPage />} />
-                  <Route path="/blog/:slug" element={<BlogPostPage />} />
-
-                  {/* Docs */}
-                  <Route path="/docs" element={<DocsLayout />}>
-                    <Route index element={<DocPage />} />
-                    <Route path=":slug" element={<DocPage />} />
-                  </Route>
-
-                  {/* Legal */}
-                  <Route path="/privacy" element={<PrivacyPage />} />
-                  <Route path="/terms" element={<TermsPage />} />
-
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<DashboardLayout />}>
-                      <Route index element={<DashboardHome />} />
-                      <Route path="profile" element={<ProfilePage />} />
-                      <Route path="api-keys" element={<ApiKeysPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
-                      <Route path="subscription" element={<SubscriptionPage />} />
-                      <Route path="notifications" element={<NotificationsPage />} />
-                      <Route path="admin" element={<AdminPage />} />
-                      <Route path="admin/users" element={<AdminUsersPage />} />
-                      <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
-                      <Route path="admin/activity" element={<AdminActivityPage />} />
-                    </Route>
-                  </Route>
-                </Routes>
+                <ErrorBoundary>
+                  <AnimatedRoutes />
+                </ErrorBoundary>
                 <CookieConsent />
               </BrowserRouter>
             </AuthProvider>
