@@ -55,7 +55,7 @@ export default function NotificationsPage() {
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${API_URL}/notifications/read-all`, {
+      const res = await fetch(`${API_URL}/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
       });

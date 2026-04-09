@@ -3,6 +3,8 @@ import { z } from 'zod/v4';
 import { query } from '../db/index.js';
 import { stripe } from '../lib/stripe.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createNotification } from '../lib/notifications.js';
+import { enqueueJob } from '../lib/job-queue.js';
 
 const router = Router();
 
@@ -197,6 +199,27 @@ router.post('/webhook', async (req: Request, res: Response) => {
             periodEnd,
           ],
         );
+
+        // Queue subscription confirmation email
+        const userResult = await query('SELECT email, name FROM users WHERE id = $1', [userId]);
+        const planInfo = planId
+          ? await query('SELECT name, price FROM subscription_plans WHERE id = $1', [planId])
+          : null;
+
+        if (userResult.rows.length > 0) {
+          const user = userResult.rows[0];
+          const plan = planInfo?.rows[0];
+          await enqueueJob('send_email', {
+            to: user.email as string,
+            template: 'subscription-confirm',
+            vars: {
+              name: (user.name as string) ?? (user.email as string),
+              planName: (plan?.name as string) ?? 'Unknown',
+              price: plan ? `$${(plan.price as number) / 100}/mo` : 'N/A',
+            },
+          });
+        }
+
         break;
       }
 
@@ -272,7 +295,22 @@ router.post('/webhook', async (req: Request, res: Response) => {
           );
         }
 
-        // TODO: Queue notification to user about failed payment
+        // Notify user about failed payment
+        if (invoiceSubId) {
+          const subResult = await query(
+            'SELECT user_id FROM subscriptions WHERE stripe_subscription_id = $1',
+            [invoiceSubId],
+          );
+          if (subResult.rows.length > 0) {
+            await createNotification(
+              subResult.rows[0].user_id as string,
+              'Payment Failed',
+              'Your latest payment failed. Please update your payment method to avoid service interruption.',
+              'billing',
+            );
+          }
+        }
+
         console.log('Payment failed for invoice:', invoice.id);
         break;
       }

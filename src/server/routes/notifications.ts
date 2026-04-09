@@ -51,6 +51,23 @@ router.get('/unread-count', requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /notifications/mark-all-read
+router.patch('/mark-all-read', requireAuth, async (req, res) => {
+  try {
+    const result = await query(
+      `UPDATE notifications SET read = true
+       WHERE user_id = $1 AND read = false
+       RETURNING id`,
+      [req.user!.sub],
+    );
+
+    res.json({ updated: result.rows.length });
+  } catch (err) {
+    console.error('Mark all read error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to mark all notifications as read' } });
+  }
+});
+
 // PATCH /notifications/:id/read
 router.patch('/:id/read', requireAuth, async (req, res) => {
   try {

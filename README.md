@@ -104,6 +104,15 @@ gcloud run deploy edra-saas \
   --set-env-vars "DATABASE_URL=...,JWT_SECRET=...,STRIPE_SECRET_KEY=..."
 ```
 
+## Roadmap
+
+Features planned for future releases:
+- Session replay
+- Funnel analysis
+- User behavior event tracking (clicks, form interactions)
+- Invoice and payment history tables
+- Billing history display on subscription page
+
 ## Tech Stack
 
 | Layer | Technology |

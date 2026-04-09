@@ -272,4 +272,137 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
+// GET /auth/google — redirect to Google consent screen
+router.get('/google', (_req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    res.status(500).json({ error: { code: 'CONFIG_ERROR', message: 'Google OAuth is not configured' } });
+    return;
+  }
+
+  const appUrl = process.env.APP_URL ?? 'http://localhost:5173';
+  const redirectUri = `${appUrl}/auth/google/callback`;
+  const scope = encodeURIComponent('openid email profile');
+  const state = crypto.randomUUID();
+
+  const url =
+    `https://accounts.google.com/o/oauth2/v2/auth` +
+    `?client_id=${encodeURIComponent(clientId)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&scope=${scope}` +
+    `&state=${state}` +
+    `&access_type=offline` +
+    `&prompt=consent`;
+
+  res.redirect(url);
+});
+
+// GET /auth/google/callback — exchange code for tokens, create/link user, redirect
+router.get('/google/callback', async (req, res) => {
+  const appUrl = process.env.APP_URL ?? 'http://localhost:5173';
+
+  try {
+    const { code } = req.query;
+    if (!code || typeof code !== 'string') {
+      res.redirect(`${appUrl}/login?error=missing_code`);
+      return;
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      res.redirect(`${appUrl}/login?error=oauth_not_configured`);
+      return;
+    }
+
+    const redirectUri = `${appUrl}/auth/google/callback`;
+
+    // Exchange authorization code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      console.error('Google token exchange failed:', await tokenResponse.text());
+      res.redirect(`${appUrl}/login?error=token_exchange_failed`);
+      return;
+    }
+
+    const tokenData = (await tokenResponse.json()) as { access_token: string };
+
+    // Fetch user profile from Google
+    const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    if (!profileResponse.ok) {
+      console.error('Google profile fetch failed:', await profileResponse.text());
+      res.redirect(`${appUrl}/login?error=profile_fetch_failed`);
+      return;
+    }
+
+    const profile = (await profileResponse.json()) as {
+      id: string;
+      email: string;
+      name?: string;
+      picture?: string;
+    };
+
+    if (!profile.email) {
+      res.redirect(`${appUrl}/login?error=no_email`);
+      return;
+    }
+
+    // Find or create user
+    let userRow: Record<string, unknown>;
+    const existing = await query('SELECT * FROM users WHERE email = $1', [profile.email.toLowerCase()]);
+
+    if (existing.rows.length > 0) {
+      userRow = existing.rows[0];
+      // Update avatar if not set
+      if (!userRow.avatar_url && profile.picture) {
+        await query('UPDATE users SET avatar_url = $1 WHERE id = $2', [profile.picture, userRow.id]);
+        userRow.avatar_url = profile.picture;
+      }
+    } else {
+      // Create new user (no password — OAuth-only account)
+      const result = await query(
+        `INSERT INTO users (email, name, avatar_url, role, email_verified)
+         VALUES ($1, $2, $3, 'user', true)
+         RETURNING *`,
+        [profile.email.toLowerCase(), profile.name ?? null, profile.picture ?? null],
+      );
+      userRow = result.rows[0];
+      await logActivity(userRow.id as string, 'signup', { email: profile.email, provider: 'google' }, req.ip ?? undefined);
+    }
+
+    const user = toUserResponse(userRow);
+    const token = signToken({ sub: user.id, role: user.role });
+
+    // Create session
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await query(
+      'INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.id, sessionToken, expiresAt],
+    );
+
+    await logActivity(user.id, 'login', { email: user.email, provider: 'google' }, req.ip ?? undefined);
+
+    res.redirect(`${appUrl}/dashboard?token=${encodeURIComponent(token)}`);
+  } catch (err) {
+    console.error('Google OAuth error:', err);
+    res.redirect(`${appUrl}/login?error=oauth_failed`);
+  }
+});
+
 export default router;

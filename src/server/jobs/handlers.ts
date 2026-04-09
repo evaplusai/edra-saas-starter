@@ -2,6 +2,7 @@ import { sendEmail } from '../services/email.js';
 import { welcomeEmail } from '../email-templates/welcome.js';
 import { passwordResetEmail } from '../email-templates/password-reset.js';
 import { subscriptionConfirmEmail } from '../email-templates/subscription-confirm.js';
+import { query } from '../db/index.js';
 
 type JobPayload = Record<string, unknown>;
 
@@ -51,17 +52,67 @@ const handlers: Record<string, JobHandler> = {
   },
 
   async calculate_daily_stats(payload) {
-    console.log('[job:calculate_daily_stats] Would calculate stats for:', {
-      date: payload.date,
+    const date = (payload.date as string) ?? new Date().toISOString().split('T')[0];
+    console.log('[job:calculate_daily_stats] Calculating stats for:', { date });
+
+    const totalUsersResult = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM users',
+    );
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.count ?? '0', 10);
+
+    const newUsersResult = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM users WHERE created_at::date = $1',
+      [date],
+    );
+    const newUsers = parseInt(newUsersResult.rows[0]?.count ?? '0', 10);
+
+    const activeSubsResult = await query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM subscriptions WHERE status = 'active'",
+    );
+    const activeSubscriptions = parseInt(activeSubsResult.rows[0]?.count ?? '0', 10);
+
+    const mrrResult = await query<{ total: string }>(
+      `SELECT COALESCE(SUM(sp.price), 0)::text AS total
+       FROM subscriptions s
+       JOIN subscription_plans sp ON sp.id = s.plan_id
+       WHERE s.status = 'active'`,
+    );
+    const mrr = parseInt(mrrResult.rows[0]?.total ?? '0', 10);
+
+    const pageViewsResult = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM analytics_events
+       WHERE event_type = 'page_view' AND created_at::date = $1`,
+      [date],
+    );
+    const pageViews = parseInt(pageViewsResult.rows[0]?.count ?? '0', 10);
+
+    await query(
+      `INSERT INTO daily_stats (date, total_users, new_users, active_subscriptions, mrr, page_views)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date) DO UPDATE SET
+         total_users = EXCLUDED.total_users,
+         new_users = EXCLUDED.new_users,
+         active_subscriptions = EXCLUDED.active_subscriptions,
+         mrr = EXCLUDED.mrr,
+         page_views = EXCLUDED.page_views`,
+      [date, totalUsers, newUsers, activeSubscriptions, mrr, pageViews],
+    );
+
+    console.log('[job:calculate_daily_stats] Done:', {
+      date,
+      totalUsers,
+      newUsers,
+      activeSubscriptions,
+      mrr,
+      pageViews,
     });
-    // Real stats calculation will be implemented later
   },
 
   async process_webhook(payload) {
-    console.log('[job:process_webhook] Would process webhook:', {
-      source: payload.source,
-      event: payload.event,
-    });
+    const { event, data } = payload as { event?: string; data?: unknown };
+    console.log(`[webhook] Processing deferred webhook: ${event}`, data);
+    // Webhook processing is handled synchronously in billing routes.
+    // This handler exists for future async webhook retries.
   },
 };
 

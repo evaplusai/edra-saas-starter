@@ -241,6 +241,23 @@ router.get('/analytics/subscribers', async (_req, res) => {
   }
 });
 
+// GET /admin/analytics/pageviews-today
+router.get('/analytics/pageviews-today', async (_req, res) => {
+  try {
+    const result = await query(`
+      SELECT COUNT(*)::int AS count
+      FROM analytics_events
+      WHERE event_type = 'pageview'
+        AND created_at >= date_trunc('day', now())
+    `);
+
+    res.json({ count: result.rows[0].count });
+  } catch (err) {
+    console.error('Admin analytics pageviews error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch pageview analytics' } });
+  }
+});
+
 // ---------- Activity Logs ----------
 
 // GET /admin/activity?action=&from=&to=&page=

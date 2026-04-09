@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
@@ -18,24 +19,34 @@ import SettingsPage from '@/pages/dashboard/settings';
 import ProfilePage from '@/pages/dashboard/profile';
 import ApiKeysPage from '@/pages/dashboard/api-keys';
 import AdminPage from '@/pages/dashboard/admin';
-import AdminUsersPage from '@/pages/admin/users';
-import AdminAnalyticsPage from '@/pages/admin/analytics';
-import AdminActivityPage from '@/pages/admin/activity';
-import SubscriptionPage from '@/pages/dashboard/subscription';
 import LoginPage from '@/pages/auth/login';
 import SignupPage from '@/pages/auth/signup';
 import ForgotPasswordPage from '@/pages/auth/forgot-password';
 import ResetPasswordPage from '@/pages/auth/reset-password';
-import BlogListingPage from '@/pages/blog/index';
-import BlogPostPage from '@/pages/blog/[slug]';
 import DocsLayout from '@/pages/docs/layout';
-import DocPage from '@/pages/docs/[slug]';
-import PrivacyPage from '@/pages/legal/privacy';
-import TermsPage from '@/pages/legal/terms';
-import NotificationsPage from '@/pages/dashboard/notifications';
 import NotFoundPage from '@/pages/not-found';
 import { CookieConsent } from '@/components/cookie-consent';
 import { PageTrackingProvider } from '@/components/page-tracking-provider';
+
+// Lazy load heavy pages for better bundle splitting
+const AdminUsersPage = lazy(() => import('@/pages/admin/users'));
+const AdminAnalyticsPage = lazy(() => import('@/pages/admin/analytics'));
+const AdminActivityPage = lazy(() => import('@/pages/admin/activity'));
+const SubscriptionPage = lazy(() => import('@/pages/dashboard/subscription'));
+const BlogListingPage = lazy(() => import('@/pages/blog/index'));
+const BlogPostPage = lazy(() => import('@/pages/blog/[slug]'));
+const DocPage = lazy(() => import('@/pages/docs/[slug]'));
+const PrivacyPage = lazy(() => import('@/pages/legal/privacy'));
+const TermsPage = lazy(() => import('@/pages/legal/terms'));
+const NotificationsPage = lazy(() => import('@/pages/dashboard/notifications'));
+
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -57,18 +68,18 @@ function AnimatedRoutes() {
         </Route>
 
         {/* Blog */}
-        <Route path="/blog" element={<PageTransition><BlogListingPage /></PageTransition>} />
-        <Route path="/blog/:slug" element={<PageTransition><BlogPostPage /></PageTransition>} />
+        <Route path="/blog" element={<PageTransition><Suspense fallback={<LazyFallback />}><BlogListingPage /></Suspense></PageTransition>} />
+        <Route path="/blog/:slug" element={<PageTransition><Suspense fallback={<LazyFallback />}><BlogPostPage /></Suspense></PageTransition>} />
 
         {/* Docs */}
         <Route path="/docs" element={<DocsLayout />}>
-          <Route index element={<PageTransition><DocPage /></PageTransition>} />
-          <Route path=":slug" element={<PageTransition><DocPage /></PageTransition>} />
+          <Route index element={<PageTransition><Suspense fallback={<LazyFallback />}><DocPage /></Suspense></PageTransition>} />
+          <Route path=":slug" element={<PageTransition><Suspense fallback={<LazyFallback />}><DocPage /></Suspense></PageTransition>} />
         </Route>
 
         {/* Legal */}
-        <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
-        <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
+        <Route path="/privacy" element={<PageTransition><Suspense fallback={<LazyFallback />}><PrivacyPage /></Suspense></PageTransition>} />
+        <Route path="/terms" element={<PageTransition><Suspense fallback={<LazyFallback />}><TermsPage /></Suspense></PageTransition>} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
@@ -76,12 +87,12 @@ function AnimatedRoutes() {
             <Route path="profile" element={<PageTransition><ProfilePage /></PageTransition>} />
             <Route path="api-keys" element={<PageTransition><ApiKeysPage /></PageTransition>} />
             <Route path="settings" element={<PageTransition><SettingsPage /></PageTransition>} />
-            <Route path="subscription" element={<PageTransition><SubscriptionPage /></PageTransition>} />
-            <Route path="notifications" element={<PageTransition><NotificationsPage /></PageTransition>} />
+            <Route path="subscription" element={<PageTransition><Suspense fallback={<LazyFallback />}><SubscriptionPage /></Suspense></PageTransition>} />
+            <Route path="notifications" element={<PageTransition><Suspense fallback={<LazyFallback />}><NotificationsPage /></Suspense></PageTransition>} />
             <Route path="admin" element={<PageTransition><AdminPage /></PageTransition>} />
-            <Route path="admin/users" element={<PageTransition><AdminUsersPage /></PageTransition>} />
-            <Route path="admin/analytics" element={<PageTransition><AdminAnalyticsPage /></PageTransition>} />
-            <Route path="admin/activity" element={<PageTransition><AdminActivityPage /></PageTransition>} />
+            <Route path="admin/users" element={<PageTransition><Suspense fallback={<LazyFallback />}><AdminUsersPage /></Suspense></PageTransition>} />
+            <Route path="admin/analytics" element={<PageTransition><Suspense fallback={<LazyFallback />}><AdminAnalyticsPage /></Suspense></PageTransition>} />
+            <Route path="admin/activity" element={<PageTransition><Suspense fallback={<LazyFallback />}><AdminActivityPage /></Suspense></PageTransition>} />
           </Route>
         </Route>
 
