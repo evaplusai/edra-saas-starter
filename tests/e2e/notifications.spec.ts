@@ -19,7 +19,7 @@ test.describe('Notification flows', () => {
     await bellButton.click();
 
     // Dropdown should appear with "Notifications" label and "View all" link
-    await expect(page.getByText('Notifications', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('[data-slot="dropdown-menu-label"]').filter({ hasText: 'Notifications' })).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('View all')).toBeVisible();
   });
 

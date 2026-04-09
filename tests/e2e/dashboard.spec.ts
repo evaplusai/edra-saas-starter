@@ -73,19 +73,19 @@ test.describe('Dashboard flows', () => {
     await loginAsUser(page);
     await page.goto('/dashboard');
 
-    // ThemeToggle button has sr-only text "Toggle theme"
-    const toggleButton = page.getByRole('button', { name: /toggle theme/i });
+    // ThemeToggle button has sr-only text "Toggle theme" — use the one in the header
+    const toggleButton = page.locator('header').getByRole('button', { name: /toggle theme/i });
     await expect(toggleButton).toBeVisible({ timeout: 10_000 });
 
-    // Click toggle and check html class changes
-    const htmlEl = page.locator('html');
-    const classBefore = await htmlEl.getAttribute('class');
+    // Click toggle twice to ensure a change cycle
     await toggleButton.click();
-    // Wait briefly for theme transition
     await page.waitForTimeout(500);
-    const classAfter = await htmlEl.getAttribute('class');
+    const classAfterFirst = await page.locator('html').getAttribute('class');
+    await toggleButton.click();
+    await page.waitForTimeout(500);
+    const classAfterSecond = await page.locator('html').getAttribute('class');
 
-    // The class should have changed (light/dark toggle)
-    expect(classAfter).not.toBe(classBefore);
+    // After two toggles, the classes should differ at least once
+    expect(classAfterFirst).not.toBe(classAfterSecond);
   });
 });

@@ -21,10 +21,8 @@ test.describe('Payment & Subscription flows', () => {
 
     await expect(page.getByRole('heading', { name: /subscription/i })).toBeVisible({ timeout: 10_000 });
 
-    // Should show either "Free Plan" text or a subscription card with plan name
-    const freePlan = page.getByText('Free Plan');
-    const planHeading = page.locator('[class*="card"]').first();
-    await expect(freePlan.or(planHeading)).toBeVisible({ timeout: 10_000 });
+    // Should show "Free Plan" text
+    await expect(page.getByText('Free Plan', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test('subscription page has plan management options', async ({ page }) => {

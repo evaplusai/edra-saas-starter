@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 30_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5188',
     trace: 'on-first-retry',
   },
   projects: [
@@ -20,9 +20,9 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npm run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
+      command: 'npx vite --port 5188 --strictPort',
+      url: 'http://localhost:5188',
+      reuseExistingServer: false,
       timeout: 30_000,
       env: {
         ...process.env,
@@ -32,13 +32,13 @@ export default defineConfig({
     {
       command: 'npx tsx src/server/index.ts',
       url: 'http://localhost:3001/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 30_000,
       env: {
         ...process.env,
         DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5433/edra_test',
         JWT_SECRET: process.env.JWT_SECRET ?? 'test-secret-key-for-e2e-testing-min32chars',
-        APP_URL: 'http://localhost:5173',
+        APP_URL: 'http://localhost:5188',
         PORT: '3001',
       },
     },

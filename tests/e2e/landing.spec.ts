@@ -47,9 +47,9 @@ test.describe('Landing page', () => {
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
 
-    await expect(footer.getByText('Product')).toBeVisible();
-    await expect(footer.getByText('Company')).toBeVisible();
-    await expect(footer.getByText('Legal')).toBeVisible();
+    await expect(footer.getByRole('heading', { name: 'Product' })).toBeVisible();
+    await expect(footer.getByRole('heading', { name: 'Company' })).toBeVisible();
+    await expect(footer.getByRole('heading', { name: 'Legal' })).toBeVisible();
 
     await expect(footer.getByRole('link', { name: /features/i })).toBeVisible();
     await expect(footer.getByRole('link', { name: /pricing/i })).toBeVisible();
