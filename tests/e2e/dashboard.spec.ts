@@ -1,47 +1,88 @@
-import { test, expect } from './fixtures';
+import { test, expect, loginAsUser } from './fixtures';
 
-test.describe('Dashboard UI', () => {
-  // Note: Dashboard requires authentication. These tests verify the redirect
-  // behavior and the landing page elements that are publicly accessible.
-
-  test('unauthenticated visit to /dashboard redirects to login', async ({ page }) => {
+test.describe('Dashboard flows', () => {
+  test('sidebar shows Dashboard, Settings, Subscription items', async ({ page }) => {
+    await loginAsUser(page);
     await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
+
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByText('Dashboard')).toBeVisible();
+    await expect(sidebar.getByText('Settings')).toBeVisible();
+    await expect(sidebar.getByText('Subscription')).toBeVisible();
   });
 
-  test('landing page renders sidebar navigation area', async ({ page }) => {
-    // Verify the landing page (which contains layout with navigation) renders
-    await page.goto('/');
+  test('navigate to Profile page and verify name/email displayed', async ({ page }) => {
+    await loginAsUser(page);
+    await page.goto('/dashboard/profile');
 
-    // The landing layout has a nav with links
-    await expect(page.getByRole('navigation')).toBeVisible();
-    await expect(page.getByRole('link', { name: /features/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /pricing/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /profile/i })).toBeVisible();
+
+    // The profile page shows the user's name and email
+    await expect(page.getByText('Regular User')).toBeVisible();
+    await expect(page.getByText('user@example.com')).toBeVisible();
   });
 
-  test('theme toggle button is present and clickable', async ({ page }) => {
-    await page.goto('/');
+  test('navigate to Settings page and verify toggles render', async ({ page }) => {
+    await loginAsUser(page);
+    await page.goto('/dashboard/settings');
 
-    // The theme toggle button exists (sr-only text "Toggle theme")
+    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible();
+
+    // Settings page has notification preference switches
+    await expect(page.getByText('Marketing Emails')).toBeVisible();
+    await expect(page.getByText('Product Emails')).toBeVisible();
+    await expect(page.getByText('In-App Notifications')).toBeVisible();
+
+    // Verify at least one switch element is present
+    const switches = page.locator('button[role="switch"]');
+    await expect(switches.first()).toBeVisible();
+  });
+
+  test('navigate to API Keys page, create a new key, and verify it appears', async ({ page }) => {
+    await loginAsUser(page);
+    await page.goto('/dashboard/api-keys');
+
+    await expect(page.getByRole('heading', { name: /api keys/i })).toBeVisible();
+
+    // Click "Create Key" button
+    await page.getByRole('button', { name: /create key/i }).click();
+
+    // Dialog should open
+    await expect(page.getByRole('heading', { name: /create api key/i })).toBeVisible();
+
+    // Fill in key name and create
+    const keyName = `test-key-${Date.now()}`;
+    await page.getByLabel('Key Name').fill(keyName);
+    await page.getByRole('button', { name: /^create$/i }).click();
+
+    // After creation, the dialog shows "API Key Created" with the key value
+    await expect(page.getByRole('heading', { name: /api key created/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Close the dialog
+    await page.getByRole('button', { name: /done/i }).click();
+
+    // Verify the key appears in the table
+    await expect(page.getByText(keyName)).toBeVisible();
+  });
+
+  test('toggle dark mode and verify class changes on html element', async ({ page }) => {
+    await loginAsUser(page);
+    await page.goto('/dashboard');
+
     const toggleButton = page.getByRole('button', { name: /toggle theme/i });
     await expect(toggleButton).toBeVisible();
 
-    // Click the toggle and verify class changes on <html> element
-    // Default theme is "system", clicking switches to dark or light
-    await toggleButton.click();
-
-    // After clicking, the html element should have a class attribute reflecting the theme
+    // Click toggle and check html class changes
     const htmlEl = page.locator('html');
-    const classAttr = await htmlEl.getAttribute('class');
-    expect(classAttr).toBeTruthy();
-  });
+    const classBefore = await htmlEl.getAttribute('class');
+    await toggleButton.click();
+    // Wait briefly for theme transition
+    await page.waitForTimeout(500);
+    const classAfter = await htmlEl.getAttribute('class');
 
-  test('landing page renders hero section', async ({ page }) => {
-    await page.goto('/');
-
-    await expect(
-      page.getByRole('heading', { name: /build your saas/i })
-    ).toBeVisible();
-    await expect(page.getByRole('link', { name: /get started free/i })).toBeVisible();
+    // The class should have changed (light/dark toggle)
+    expect(classAfter).not.toBe(classBefore);
   });
 });

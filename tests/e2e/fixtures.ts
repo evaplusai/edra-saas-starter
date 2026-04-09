@@ -1,10 +1,8 @@
 /* eslint-disable react-hooks/rules-of-hooks, no-empty-pattern */
-import { test as base, type Page } from '@playwright/test';
+import { test as base, type Page, expect } from '@playwright/test';
 
 /**
- * Helper to register a test user and return authenticated page state.
- * For E2E tests that only verify UI rendering, authentication is not needed.
- * This fixture provides a convenience wrapper for tests that require auth state.
+ * Seeded user credentials (must match src/server/db/seed.ts).
  */
 export interface TestUser {
   email: string;
@@ -12,36 +10,73 @@ export interface TestUser {
   name: string;
 }
 
-export const testUser: TestUser = {
-  email: 'test@example.com',
-  password: 'TestPassword123!',
-  name: 'Test User',
+export const seedAdmin: TestUser = {
+  email: 'admin@example.com',
+  password: 'password123',
+  name: 'Admin User',
+};
+
+export const seedUser: TestUser = {
+  email: 'user@example.com',
+  password: 'password123',
+  name: 'Regular User',
 };
 
 /**
- * Fill the signup form with test user credentials.
- * Does not submit -- caller can assert or submit as needed.
+ * Register a new user via the signup form.
+ * Waits for navigation away from /signup after submission.
  */
-export async function fillSignupForm(page: Page, user: TestUser = testUser) {
+export async function registerUser(
+  page: Page,
+  user: { name: string; email: string; password: string },
+) {
+  await page.goto('/signup');
   await page.getByLabel('Name').fill(user.name);
   await page.getByLabel('Email').fill(user.email);
   await page.getByLabel('Password').fill(user.password);
+  await page.getByRole('button', { name: /create account/i }).click();
+  // After successful registration the app navigates away from /signup
+  await page.waitForURL((url) => !url.pathname.includes('/signup'), {
+    timeout: 10_000,
+  });
 }
 
 /**
- * Fill the login form with test user credentials.
- * Does not submit -- caller can assert or submit as needed.
+ * Login via the login form. Waits for navigation away from /login.
  */
-export async function fillLoginForm(page: Page, user: TestUser = testUser) {
+export async function loginUser(
+  page: Page,
+  user: { email: string; password: string },
+) {
+  await page.goto('/login');
   await page.getByLabel('Email').fill(user.email);
   await page.getByLabel('Password', { exact: true }).fill(user.password);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  // Wait for navigation away from login
+  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: 10_000,
+  });
 }
 
-/** Extended test fixture with test user helpers */
+/**
+ * Login with the seeded admin account.
+ */
+export async function loginAsAdmin(page: Page) {
+  await loginUser(page, seedAdmin);
+}
+
+/**
+ * Login with the seeded regular user account.
+ */
+export async function loginAsUser(page: Page) {
+  await loginUser(page, seedUser);
+}
+
+/** Extended test fixture */
 export const test = base.extend<{ testUserData: TestUser }>({
   testUserData: async ({}, use) => {
-    await use(testUser);
+    await use(seedUser);
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect };

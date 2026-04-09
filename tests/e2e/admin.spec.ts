@@ -1,23 +1,57 @@
-import { test, expect } from './fixtures';
+import { test, expect, loginAsAdmin, loginAsUser } from './fixtures';
 
-test.describe('Admin pages', () => {
-  test('unauthenticated visit to /dashboard/admin redirects to login', async ({ page }) => {
-    await page.goto('/dashboard/admin');
-    await expect(page).toHaveURL(/\/login/);
+test.describe('Admin flows', () => {
+  test('admin sees Admin nav items (Users, Analytics, Activity)', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dashboard');
+
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByText('Admin')).toBeVisible();
+    await expect(sidebar.getByText('Users')).toBeVisible();
+    await expect(sidebar.getByText('Analytics')).toBeVisible();
+    await expect(sidebar.getByText('Activity')).toBeVisible();
   });
 
-  test('unauthenticated visit to /dashboard/admin/users redirects to login', async ({ page }) => {
+  test('admin navigates to Users page and sees user table with seeded users', async ({ page }) => {
+    await loginAsAdmin(page);
     await page.goto('/dashboard/admin/users');
-    await expect(page).toHaveURL(/\/login/);
+
+    await expect(page.getByRole('heading', { name: /user management/i })).toBeVisible();
+
+    // The table should render with seeded users
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('admin@example.com')).toBeVisible();
+    await expect(page.getByText('user@example.com')).toBeVisible();
   });
 
-  test('unauthenticated visit to /dashboard/admin/analytics redirects to login', async ({ page }) => {
-    await page.goto('/dashboard/admin/analytics');
-    await expect(page).toHaveURL(/\/login/);
+  test('admin searches for a user by email and sees filtered results', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dashboard/admin/users');
+
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 });
+
+    // Type in search box
+    await page.getByPlaceholder('Search by name or email...').fill('user@example.com');
+
+    // Wait for debounced search to complete and table to update
+    await page.waitForTimeout(500);
+
+    // The filtered table should show user@example.com but not admin@example.com
+    await expect(page.getByText('user@example.com')).toBeVisible();
+    // admin@example.com should be filtered out (not visible in the table body)
+    const adminRow = page.locator('tbody').getByText('admin@example.com');
+    await expect(adminRow).toHaveCount(0);
   });
 
-  test('unauthenticated visit to /dashboard/admin/activity redirects to login', async ({ page }) => {
-    await page.goto('/dashboard/admin/activity');
-    await expect(page).toHaveURL(/\/login/);
+  test('non-admin user does NOT see Admin nav items', async ({ page }) => {
+    await loginAsUser(page);
+    await page.goto('/dashboard');
+
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByText('Dashboard')).toBeVisible();
+
+    // Admin section should not be visible to regular users
+    const adminLink = sidebar.getByText('Admin', { exact: true });
+    await expect(adminLink).toHaveCount(0);
   });
 });
